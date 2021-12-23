@@ -264,6 +264,8 @@ class VertexBufferStructMember:
             return tuple(struct.unpack_from("fff", buf, offset))
         if self.data_type == self.DataType.FLOAT4:
             return tuple(struct.unpack_from("ffff", buf, offset))
+        if self.data_type == self.DataType.BYTE4C:
+            return tuple(struct.unpack_from("xxxx", buf, offset))
         if self.data_type == self.DataType.UV:
             uv = struct.unpack_from("hh", buf, offset)
             return tuple(component / uv_divisor for component in uv)
