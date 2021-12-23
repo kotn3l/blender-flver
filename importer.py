@@ -156,7 +156,7 @@ def run(context, path, transpose_y_and_z, import_skeleton, connect_bones):
         uv_layer = bm.loops.layers.uv.new()
         for face in bm.faces:
             for loop in face.loops:
-                u, v = inflated_mesh.vertices.uv[loop.vert.index]
+                u, v = inflated_mesh.vertices.uv[loop.vert.index][:2]
                 loop[uv_layer].uv = (u, 1.0 - v)
         if import_skeleton:
             weight_layer = bm.verts.layers.deform.new()
