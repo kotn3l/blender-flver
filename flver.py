@@ -154,6 +154,9 @@ class VertexBuffer:
                 VertexBufferStructMember.AttributeType.BONE_WEIGHTS,
                 VertexBufferStructMember.AttributeType.BONE_INDICES,
                 VertexBufferStructMember.AttributeType.UV,
+                VertexBufferStructMember.AttributeType.NORMAL,
+                VertexBufferStructMember.AttributeType.TANGENT,
+                VertexBufferStructMember.AttributeType.BITANGENT,
             }
         ]
 
@@ -165,6 +168,9 @@ class VertexBuffer:
             VertexBufferStructMember.AttributeType.BONE_INDICES:
             vertices.bone_indices,
             VertexBufferStructMember.AttributeType.UV: vertices.uv,
+            VertexBufferStructMember.AttributeType.NORMAL: vertices.normal,
+            VertexBufferStructMember.AttributeType.TANGENT: vertices.tangent,
+            VertexBufferStructMember.AttributeType.BITANGENT: vertices.bitangent,
         }
         for member in struct_members:
             for i in range(self.vertex_count):
@@ -244,13 +250,14 @@ class VertexBufferStructMember:
                 self.DataType.BONE_INDICES,
                 self.DataType.BONE_WEIGHTS,
                 self.DataType.SHORT4_TO_FLOAT4B,
+                self.DataType.SHORT_BONE_INDICES
         }:
             return 8
         if self.data_type == self.DataType.FLOAT3:
             return 12
         if self.data_type == self.DataType.FLOAT4:
             return 16
-        raise Exception("unknown size for data type")
+        raise Exception("unknown size for data type: ", self.data_type)
 
     def _unpack(self, buf, offset, version):
         if version >= 0x2000F:
@@ -258,25 +265,76 @@ class VertexBufferStructMember:
         else:
             uv_divisor = 1024.0
         offset += self.struct_offset
-        if self.data_type == self.DataType.FLOAT2:
-            return tuple(struct.unpack_from("ff", buf, offset))
-        if self.data_type == self.DataType.FLOAT3:
-            return tuple(struct.unpack_from("fff", buf, offset))
-        if self.data_type == self.DataType.FLOAT4:
-            return tuple(struct.unpack_from("ffff", buf, offset))
-        if self.data_type == self.DataType.BYTE4C:
-            return tuple(struct.unpack_from("xxxx", buf, offset))
-        if self.data_type == self.DataType.UV:
-            uv = struct.unpack_from("hh", buf, offset)
-            return tuple(component / uv_divisor for component in uv)
-        if self.data_type == self.DataType.UV_PAIR:
-            uv = struct.unpack_from("hhhh", buf, offset)
-            return tuple(component / uv_divisor for component in uv)
-        if self.data_type == self.DataType.BONE_INDICES:
-            return tuple(struct.unpack_from("BBBB", buf, offset))
-        if self.data_type == self.DataType.BONE_WEIGHTS:
-            weights = struct.unpack_from("HHHH", buf, offset)
-            return tuple(weight / 32767.0 for weight in weights)
+        if self.attribute_type == POSITION:
+            if self.data_type == self.DataType.FLOAT3:
+                return tuple(struct.unpack_from("fff", buf, offset))
+            if self.data_type == self.DataType.FLOAT4:
+                return tuple(struct.unpack_from("ffff", buf, offset))
+            raise Exception(
+            f"vertex data type not yet implemented: {self.data_type.name} for "
+            + f"attribute {self.attribute_type.name} " +
+            str(list(hex(c) for c in buf[offset:offset + self.size()])))
+        if self.attribute_type == BONE_WEIGHTS:
+            if self.data_type == self.DataType.BYTE4A:
+                weights = struct.unpack_from("bbbb", buf, offset)
+                weights1 = tuple(weight / 127.0 for weight in weights)
+                return weights1
+            if self.data_type == self.DataType.BYTE4C:
+                #return tuple(struct.unpack_from("BBBB", buf, offset))
+                weights = struct.unpack_from("BBBB", buf, offset)
+                #print("BYTE4C WEIGHTS BBBB", weights)
+                weights1 = tuple(weight / 255.0 for weight in weights)
+                #print("BYTE4C WEIGHTS BBBB / 127", weights1)
+                return weights1
+            if self.data_type == self.DataType.UV_PAIR:
+                uv = struct.unpack_from("HHHH", buf, offset)
+                return tuple(weight / 32767.0 for weight in uv)
+            if self.data_type == self.DataType.BONE_WEIGHTS:
+                weights = struct.unpack_from("HHHH", buf, offset)
+                #print("BONE WEIGHTS HHHH", weights)
+                weights1 = tuple(weight / 32767.0 for weight in weights)
+                #print("BONE WEIGHTS HHHH / 32767", weights1)
+                return weights1
+            raise Exception(
+            f"vertex data type not yet implemented: {self.data_type.name} for "
+            + f"attribute {self.attribute_type.name} " +
+            str(list(hex(c) for c in buf[offset:offset + self.size()])))
+        if self.attribute_type == BONE_INDICES:
+            if self.data_type == self.DataType.BONE_INDICES:
+                return tuple(struct.unpack_from("BBBB", buf, offset))
+            if self.data_type == self.DataType.SHORT_BONE_INDICES:
+                return tuple(struct.unpack_from("HHHH", buf, offset))
+            if self.data_type == self.DataType.BYTE4E:
+                return tuple(struct.unpack_from("BBBB", buf, offset))
+            raise Exception(
+            f"vertex data type not yet implemented: {self.data_type.name} for "
+            + f"attribute {self.attribute_type.name} " +
+            str(list(hex(c) for c in buf[offset:offset + self.size()])))
+        if self.attribute_type == NORMAL:
+            if self.data_type == self.DataType.FLOAT3:
+                return tuple(struct.unpack_from("fff", buf, offset))
+            if self.data_type == self.DataType.FLOAT4:
+                return tuple(struct.unpack_from("ffff", buf, offset))
+            raise Exception(
+            f"vertex data type not yet implemented: {self.data_type.name} for "
+            + f"attribute {self.attribute_type.name} " +
+            str(list(hex(c) for c in buf[offset:offset + self.size()])))
+        if self.attribute_type == UV:
+            if self.data_type == self.DataType.UV:
+                uv = struct.unpack_from("hh", buf, offset)
+                return tuple(component / uv_divisor for component in uv)
+            if self.data_type == self.DataType.UV_PAIR:
+                uv = struct.unpack_from("hhhh", buf, offset)
+                return tuple(component / uv_divisor for component in uv)
+            f"vertex data type not yet implemented: {self.data_type.name} for "
+            + f"attribute {self.attribute_type.name} " +
+            str(list(hex(c) for c in buf[offset:offset + self.size()])))
+        if self.attribute_type == TANGENT:
+            if self.data_type == self.DataType.FLOAT4:
+                return tuple(struct.unpack_from("ffff", buf, offset))
+            f"vertex data type not yet implemented: {self.data_type.name} for "
+            + f"attribute {self.attribute_type.name} " +
+            str(list(hex(c) for c in buf[offset:offset + self.size()])))
         raise Exception(
             f"vertex data type not yet implemented: {self.data_type.name} for "
             + f"attribute {self.attribute_type.name} " +
