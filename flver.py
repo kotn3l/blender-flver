@@ -333,7 +333,6 @@ class VertexBufferStructMember:
         if self.attribute_type == TANGENT:
             if self.data_type == self.DataType.FLOAT4:
                 return tuple(struct.unpack_from("ffff", buf, offset))
-            raise Exception(
             f"vertex data type not yet implemented: {self.data_type.name} for "
             + f"attribute {self.attribute_type.name} " +
             str(list(hex(c) for c in buf[offset:offset + self.size()])))
