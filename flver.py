@@ -326,6 +326,7 @@ class VertexBufferStructMember:
             if self.data_type == self.DataType.UV_PAIR:
                 uv = struct.unpack_from("hhhh", buf, offset)
                 return tuple(component / uv_divisor for component in uv)
+            raise Exception(
             f"vertex data type not yet implemented: {self.data_type.name} for "
             + f"attribute {self.attribute_type.name} " +
             str(list(hex(c) for c in buf[offset:offset + self.size()])))
